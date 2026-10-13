@@ -5,6 +5,21 @@ stock firmware, which stays untouched, and you can switch between both at any ti
 
 Personal hobby project. The name is a nod to AI slop: the code was written with heavy use of AI coding assistants.
 
+<p>
+  <img src="docs/img/screens/home.png" width="190" alt="Music">
+  <img src="docs/img/screens/albums.png" width="190" alt="Albums">
+  <img src="docs/img/screens/player.png" width="190" alt="Now playing">
+  <img src="docs/img/screens/queue.png" width="190" alt="Queue">
+</p>
+<p>
+  <img src="docs/img/screens/search.png" width="190" alt="Search">
+  <img src="docs/img/screens/info.png" width="190" alt="Technical sheet">
+  <img src="docs/img/screens/panel.png" width="190" alt="Quick panel">
+  <img src="docs/img/screens/settings.png" width="190" alt="Settings">
+</p>
+
+<sub>Simulator screenshots with a demo library (fictional artists, generated covers).</sub>
+
 > **Before you start.** Experimental software, use at your own risk; not affiliated with HiBy Music.
 > Volume is an attenuation (255 = mute, lower = louder): keep it low before pressing play.
 
