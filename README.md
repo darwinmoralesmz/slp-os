@@ -42,8 +42,9 @@ besides your music (see [How much space it takes](#how-much-space-it-takes)), an
    ```sh
    adb devices
    ```
-   It must list one line ending in `device`. If the list is empty, unplug the cable, plug it back in and run it
-   again (repeat step 2 if the R1 restarted). Then run:
+   It must list one line ending in `device`. If the list is empty, enable developer mode again: leave the USB
+   screen with the arrow at the top left, go back to Settings > About, tap the **About** title ten times and run
+   `adb devices` again. Then run:
    ```sh
    python3 installer.py install
    ```

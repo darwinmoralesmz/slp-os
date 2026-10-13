@@ -26,7 +26,8 @@ python3 -c "import io,json,zipfile,urllib.request as u;a=json.load(u.urlopen('ht
 It prints the folder name; `cd` into it. Then:
 
 1. Run `adb devices`: it must list exactly one line ending in `device`. It does not always connect on the first try:
-   if the list is empty, have the user unplug and replug the cable, and repeat step 3 if the R1 restarted.
+   if the list is empty, have the user enable developer mode again: leave the USB screen with the arrow at the top
+   left, go back to Settings > About and tap the "About" title ten times. Then run `adb devices` again.
 2. **Ask the user to confirm** before going on: the installation writes slot B of the NAND, the only irreversible
    step. Slot A (stock HiBy OS) is never touched, and the installer first backs up all 7 partitions to
    `~/hiby-r1-backup/`.
@@ -54,7 +55,7 @@ They ask questions too: confirm with the user first and add `-y`. `uninstall` wr
 | Message | What to tell the user |
 | --- | --- |
 | `adb not found in PATH` | Install Android platform-tools. |
-| `expected one device in ADB, found 0` | ADB is off (it is after every restart): repeat step 3, or unplug and replug the USB cable. |
+| `expected one device in ADB, found 0` | ADB is off (it is after every restart) or did not connect: repeat step 3 (leave the USB screen with the arrow, tap "About" ten times again). |
 | `found 0` + `unauthorized` in `adb devices` | Tap "OK" on the authorization prompt on the R1 screen. |
 | `found 2` | Two devices: pass `-s SERIAL`. |
 | `this does not look like a HiBy R1` | Wrong device or wrong firmware. Stop. |
