@@ -67,6 +67,6 @@ They ask questions too: confirm with the user first and add `-y`. `uninstall` wr
 - Never run `install` or `uninstall` without the user in front of the screen: both write to NAND and the
   device reboots.
 - Never tell the user to skip the NAND backup (`~/hiby-r1-backup/` is what makes uninstalling possible).
-- Volume is an attenuation on this device: 255 is mute, lower is louder. Say this before anything plays.
+- Tell the user to keep the volume low before anything plays (the app restores the last level they used).
 - Nothing from HiBy is redistributed: the Bluetooth/Wi-Fi kit and the recovery image come from the user's
   own device. Do not add HiBy firmware files to the repository or the release.

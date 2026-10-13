@@ -21,7 +21,7 @@ Personal hobby project. The name is a nod to AI slop: the code was written with 
 <sub>Simulator screenshots with a demo library (fictional artists, generated covers).</sub>
 
 > **Before you start.** Experimental software, use at your own risk; not affiliated with HiBy Music.
-> Volume is an attenuation (255 = mute, lower = louder): keep it low before pressing play.
+> Keep the volume low before pressing play, especially with sensitive headphones.
 
 ## Install
 
@@ -92,7 +92,10 @@ The screen has a mini-player at the top, the list in the middle and a fixed sect
   a playlist or Favorites. Long-press to select several items and act on them from the bottom bar (play now, play next,
   add to a playlist, favorite and more).
 - **Search.** Matches artists, albums and songs as you type; drag the results to hide the keyboard.
-- **Buttons.** There is no physical play/pause; the key reported as play/pause acts as "previous".
+- **Buttons.** Volume up and down work as usual; the level is shown on screen and kept after powering off (the first
+  time it starts low, at 20 of 100). The power button turns the screen off and on with one press, **goes back to the
+  Music home with two quick presses** (closing any panel or dialog), and opens the power menu when held. The track
+  buttons skip with a press and seek through the song when held. There is no physical play/pause: tap the player screen.
 
 ## Features
 

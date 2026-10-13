@@ -4022,11 +4022,12 @@ static void boot_sync(void) {
 	pthread_detach(t);
 }
 
-// Apaga o reinicia el equipo: "reboot" vuelve a HiBy (desarma el flag); "reboot-here" arma el flag y reinicia en este sistema.
+// Apaga o reinicia el equipo (silencia la salida; el volumen guardado se recupera al arrancar): "reboot" vuelve a HiBy (desarma el flag); "reboot-here" arma el flag y reinicia en este sistema.
 // En el simulador solo termina el proceso.
 static void power_run(const char *cmd) {
-	vol = 0; apply_volume(); paused = 1;
-	save_state();
+	paused = 1;
+	save_state();   // guarda el volumen del usuario antes de silenciar
+	vol = 0; apply_volume();
 	if (!strcmp(cmd, "reboot")) boot_job((void *)0);
 	if (!strcmp(cmd, "reboot-here")) { boot_job((void *)1); cmd = "reboot"; }
 #ifdef R1_SIM
@@ -4404,6 +4405,7 @@ static void sim_script(void) {
 	else if (!strncmp(tok, "pld:", 4)) { dlg_close(); pl_delete(atoi(tok + 4)); render(); }
 	else if (!strncmp(tok, "sel:", 4)) { cur()->sel = atoi(tok + 4); do_select(); }
 	else if (!strcmp(tok, "pm")) power_menu_open();
+	else if (!strcmp(tok, "poweroff")) power_run("poweroff");
 	else if (!strcmp(tok, "link:on")) system("echo AA:BB:CC:DD:EE:01 > " DATA_DIR "/bt_link");
 	else if (!strcmp(tok, "link:off")) system("rm -f " DATA_DIR "/bt_link");
 	else if (!strcmp(tok, "pause")) paused = 1;
