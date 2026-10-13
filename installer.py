@@ -33,7 +33,7 @@ def die(msg):
 
 
 def adb(*args, check=True):
-    p = subprocess.run(['adb', *SERIAL, *args], capture_output=True, text=True)
+    p = subprocess.run(['adb', *SERIAL, *args], capture_output=True, text=True, stdin=subprocess.DEVNULL)
     if check and p.returncode:
         die('adb %s failed: %s' % (args[0], (p.stderr or p.stdout).strip()))
     return p.stdout
@@ -183,7 +183,7 @@ def build_slotb():
     try:
         # -e must be the last option: mksquashfs takes every following argument as an exclusion.
         sh('chmod +x {i}/mksquashfs && {i}/mksquashfs /tmp/rec {i}/slotb.img -comp lzo -b 131072 -all-root -noappend '
-           '-no-progress -quiet -no-xattrs -processors 1 -mem 16M '
+           '-no-progress -quiet -no-xattrs -processors 1 -single-reader -mem 6M '
            "-p 'etc/init.d/S92_01_dev f 755 0 0 cat {i}/S92_01_dev' -e etc/init.d/S92_03_start_recovery".format(i=INST))
     finally:
         sh('umount /tmp/rec', False)
@@ -214,8 +214,8 @@ def cmd_install(a):
         if not ask('Write the image to slot B (mtd4)? Stock HiBy OS (slot A) is not touched.', a.yes):
             die('cancelled before writing.')
         flash_mtd4(img)
-        sh('rm -f %s/slotb.img' % INST)
         print('  slot B written and verified')
+    sh('rm -rf %s' % INST)
     print('\nInstalled. To start it later: python3 installer.py boot')
     if ask('Restart into the custom system now?', a.yes):
         reboot_r1os()
@@ -246,12 +246,14 @@ def cmd_uninstall(a):
         mount_sd()
         push(img, INST + '/mtd4.bin')
         flash_mtd4(INST + '/mtd4.bin')
+        sh('rm -f %s/mtd4.bin' % INST)
         print('slot B restored and verified')
     sh('/usr/bin/bootmode.sh >/dev/null 2>&1')
     if ask('Delete the system from the microSD (r1os/ and boot.sh; music/ is kept)?', a.yes):
         mount_sd()
-        sh('umount %s 2>/dev/null; rm -rf %s/r1os %s/boot.sh /usr/data/mnt/r1os' % (R, SD, SD), False)
-        print('removed. If the card has a second partition (R1OS), it can be deleted from a PC.')
+        # R is the second partition or a link to SD/r1os: empty it, then remove the mount point or link.
+        sh('rm -rf %s/* %s/r1os %s/boot.sh; umount %s 2>/dev/null; rm -rf %s' % (R, SD, SD, R, R), False)
+        print('removed. A second partition (R1OS), if any, is left empty and can be deleted from a PC.')
     print('done: the R1 is back to stock HiBy OS')
 
 
