@@ -84,8 +84,8 @@ devices connected, pick one with `-s SERIAL`; `-y` answers every question with y
 The screen has a mini-player at the top, the list in the middle and a fixed section bar at the bottom.
 
 - **Quick panel.** Drag down from the top-left corner. Half open it shows time, weather, battery, output and brightness;
-  fully open it adds volume, the Bluetooth card (tap to reconnect or disconnect, hold for Bluetooth settings),
-  Settings, stand-by and the power menu (Power off, Restart, Restart into HiBy, Screen off).
+  fully open it adds volume, the Bluetooth card (tap to reconnect or disconnect, hold for Bluetooth settings), the
+  equalizer (tap for the next preset), Settings, stand-by and the power menu (Power off, Restart, Restart into HiBy, Screen off).
 - **Player.** Taps are counted: one pauses or resumes, two skip forward, three go back. The same works on the right side
   of the mini-player. Hold for the technical sheet: codec, average bitrate, sample rate and file path.
 - **Lists.** Swipe a song to the right to add it to the end of the queue, or to the left to remove it from the queue,
@@ -102,6 +102,7 @@ The screen has a mini-player at the top, the list in the middle and a fixed sect
 - FLAC, MP3, AAC and ALAC (M4A), Vorbis, Opus and WAV, played at 16 bits.
 - Headphone jack and Bluetooth (SBC and AAC tested; LDAC and aptX untested), with AVRCP controls.
 - Library by albums, artists and songs with cover art, favorites, play queue and `.m3u8` playlists in `music/Listas`.
+- Equalizer presets: bass, treble, bass and treble, vocal, less bass and warm (Settings > Sound or the quick panel).
 - Spanish and English, light and dark themes with an accent color taken from the cover.
 - Auto power-off after 10 or 30 minutes without playback (configurable, or "Never").
 - Not yet tested on the device: Wi-Fi settings, "Music over Wi-Fi" and USB disk mode.
