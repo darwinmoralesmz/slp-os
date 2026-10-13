@@ -10,7 +10,7 @@ P=slp-os-$V T=$(mktemp -d)
 D=$T/$P
 mkdir -p $D/ui $D/tools $D/sd/r1os/fonts/noto $D/sd/r1os/fonts/noto-cjk
 # Solo archivos versionados: en el disco hay binarios de HiBy ignorados por git (bt/bin, bt/lib) que no se distribuyen.
-git archive HEAD installer.py README.md LICENSE sd/boot.sh sd/r1os/boot.sh sd/r1os/usb_disk.sh sd/r1os/bt sd/r1os/web slotB/overlay | tar -x -C $D
+git archive HEAD installer.py AGENTS.md README.md LICENSE docs/img/enable-adb.jpg sd/boot.sh sd/r1os/boot.sh sd/r1os/usb_disk.sh sd/r1os/bt sd/r1os/web slotB/overlay | tar -x -C $D
 cp ui/r1 $D/ui/
 cp tools/mksquashfs-mipsel $D/tools/
 for f in noto/NotoSans-Medium.ttf noto-cjk/NotoSansCJK-Medium.ttc noto/NotoSansSymbols-Medium.ttf noto/NotoSansSymbols2-Regular.ttf noto/NotoSansMath-Regular.ttf noto/NotoEmoji.ttf; do
