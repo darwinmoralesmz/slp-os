@@ -8,13 +8,11 @@ V=${1:?uso: scripts/package.sh <versión>}
 make -C ui r1 >/dev/null
 P=slp-os-$V T=$(mktemp -d)
 D=$T/$P
-mkdir -p $D/ui $D/tools $D/sd/r1os/fonts/noto $D/sd/r1os/fonts/noto-cjk $D/slotB
-cp installer.py README.md LICENSE $D/
+mkdir -p $D/ui $D/tools $D/sd/r1os/fonts/noto $D/sd/r1os/fonts/noto-cjk
+# Solo archivos versionados: en el disco hay binarios de HiBy ignorados por git (bt/bin, bt/lib) que no se distribuyen.
+git archive HEAD installer.py README.md LICENSE sd/boot.sh sd/r1os/boot.sh sd/r1os/usb_disk.sh sd/r1os/bt sd/r1os/web slotB/overlay | tar -x -C $D
 cp ui/r1 $D/ui/
 cp tools/mksquashfs-mipsel $D/tools/
-cp sd/boot.sh $D/sd/
-cp -r sd/r1os/boot.sh sd/r1os/usb_disk.sh sd/r1os/bt sd/r1os/web $D/sd/r1os/
-cp -r slotB/overlay $D/slotB/
 for f in noto/NotoSans-Medium.ttf noto-cjk/NotoSansCJK-Medium.ttc noto/NotoSansSymbols-Medium.ttf noto/NotoSansSymbols2-Regular.ttf noto/NotoSansMath-Regular.ttf noto/NotoEmoji.ttf; do
 	src=/usr/share/fonts/$f; [ -f "$src" ] || src=tools/fonts/${f##*/}
 	cp "$src" $D/sd/r1os/fonts/$f
