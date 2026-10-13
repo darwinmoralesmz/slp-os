@@ -1,0 +1,13 @@
+#!/bin/sh
+# Slot B de desarrollo: vuelve al slot stock en el siguiente reinicio, inicia ADB, monta la SD y ejecuta /data/mnt/sd_0/boot.sh si existe.
+
+case "$1" in
+  start)
+	/usr/bin/bootmode.sh
+	/etc/init.d/adb/S440adb start
+	mkdir -p /data/mnt/sd_0
+	mount -t vfat -o iocharset=utf8 /dev/mmcblk0p1 /data/mnt/sd_0 || mount -t exfat /dev/mmcblk0p1 /data/mnt/sd_0
+	[ -x /data/mnt/sd_0/boot.sh ] && /data/mnt/sd_0/boot.sh &
+	;;
+esac
+exit 0

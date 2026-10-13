@@ -1,0 +1,4 @@
+#!/bin/sh
+# Simulador: "wget -q -T N -O - URL" con curl (el PC no trae wget).
+for a; do u=$a; done
+exec curl -s -m 10 "$u"

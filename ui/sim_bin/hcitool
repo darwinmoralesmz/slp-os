@@ -1,0 +1,4 @@
+#!/bin/sh
+# Simulador: "hcitool con" informa el enlace ACL de /tmp/r1sim/bt_link.
+[ "$1" = con ] && [ -f /tmp/r1sim/bt_link ] && printf 'Connections:\n\t< ACL %s handle 11 state 1 lm CENTRAL\n' "$(cat /tmp/r1sim/bt_link)"
+exit 0

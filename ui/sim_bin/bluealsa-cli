@@ -1,0 +1,10 @@
+#!/bin/sh
+# Simulador: list-pcms expone el A2DP del enlace simulado; open consume audio a ritmo real (48 kHz S16 estéreo) o lo reproduce
+# con R1_SIM_SOUND (formato como en pcm.h).
+case "$1" in
+list-pcms) [ -f /tmp/r1sim/bt_link ] && echo "/org/bluealsa/hci0/dev_$(tr ':' '_' < /tmp/r1sim/bt_link)/a2dpsrc/sink" ;;
+open)
+	if [ -n "$R1_SIM_SOUND" ]; then exec sh -c "$(printf "$R1_SIM_SOUND" 48000)"; fi
+	while [ "$(head -c 192000 | wc -c)" -gt 0 ]; do sleep 1; done ;;
+esac
+exit 0

@@ -1,0 +1,33 @@
+# Firmware dumps and vendor binaries
+backup/
+*.bin
+*.upt
+*.squashfs
+rootfs_stock/
+rootfs_recovery/
+
+# Compiled outputs and toolchains
+tools/
+build/
+ui/build/
+ui/r1
+ui/sim
+ui/lvgl_bench
+
+# SD vendor extras (extracted from device at install time)
+sd/r1os/bt/bin/
+sd/r1os/bt/lib/
+sd/r1os/lib/
+sd/r1os/alsa/
+sd/r1os/bin/
+sd/r1os/cywdhd.ko
+sd/r1os/r1
+
+# IDE and OS artifacts
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+__pycache__/
+*.py[cod]
+logs/

@@ -1,0 +1,427 @@
+<!doctype html>
+<!-- Página del R1 (la sirve src/webd.h): subir música, borrar pistas y editar listas .m3u8. Español e inglés.
+     Pensada para bibliotecas grandes: la búsqueda la hace el R1 y todo se muestra por tramos (ver LIM). -->
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>HiBy R1</title>
+<style>
+:root { color-scheme: dark; --bg: #141414; --bg2: #1f1f1f; --bg3: #2a2a2a; --line: #333; --fg: #ececec; --dim: #9a9a9a; --a: #ff6b2c; --ok: #5cc97b; --bad: #ff5a4f; }
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--fg); font: 15px/1.45 system-ui, sans-serif; }
+header { position: sticky; top: 0; z-index: 5; background: var(--bg); border-bottom: 1px solid var(--line); }
+.top { display: flex; align-items: center; gap: 12px; padding: 10px 16px 0; max-width: 900px; margin: 0 auto; }
+.top b { font-size: 17px; }
+.top .info { color: var(--dim); font-size: 13px; margin-right: auto; }
+nav { display: flex; gap: 4px; padding: 6px 12px 0; max-width: 900px; margin: 0 auto; }
+nav button { background: none; border: 0; border-bottom: 3px solid transparent; border-radius: 0; padding: 8px 12px; color: var(--dim); font-weight: 600; }
+nav button.on { color: var(--fg); border-color: var(--a); }
+main { max-width: 900px; margin: 0 auto; padding: 16px; }
+button, select, input[type=text] { font: inherit; color: var(--fg); background: var(--bg2); border: 1px solid var(--line); border-radius: 8px; padding: 7px 12px; }
+button { cursor: pointer; white-space: nowrap; }
+button:hover { border-color: #555; }
+button.main { background: var(--a); border-color: var(--a); color: #111; font-weight: 600; }
+button.danger { color: var(--bad); }
+button.icon { padding: 4px 9px; }
+button:disabled { opacity: .4; cursor: default; }
+.lang button { padding: 3px 8px; font-size: 13px; }
+.lang button.on { border-color: var(--a); color: var(--a); }
+section { display: none; } section.on { display: block; }
+.bar { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-bottom: 12px; }
+.bar .grow { flex: 1; min-width: 180px; }
+.bar.grp { margin: 0; flex-wrap: nowrap; }
+.bar.grp select { min-width: 0; }
+.sticky { position: sticky; top: 92px; z-index: 4; background: var(--bg); padding: 8px 0; margin: 0; border-bottom: 1px solid var(--line); }
+.dim { color: var(--dim); font-size: 13px; }
+.banner { display: none; align-items: center; gap: 12px; padding: 10px 16px; background: #3a2414; border-bottom: 1px solid var(--a); }
+.banner.on { display: flex; justify-content: center; flex-wrap: wrap; }
+.drop { border: 2px dashed var(--line); border-radius: 12px; padding: 32px 16px; text-align: center; }
+.drop.over { border-color: var(--a); background: #241a14; }
+.drop p { margin: 0 0 14px; }
+.card { background: var(--bg2); border: 1px solid var(--line); border-radius: 12px; padding: 14px 16px; margin-top: 14px; }
+progress { width: 100%; height: 8px; accent-color: var(--a); }
+ul { list-style: none; padding: 0; margin: 0; }
+li { display: flex; gap: 10px; align-items: center; padding: 8px 6px; border-bottom: 1px solid var(--line); }
+li .t { flex: 1; min-width: 0; }
+li .t div { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+li .t .s { color: var(--dim); font-size: 13px; }
+#tracks li { cursor: pointer; }
+#tracks li:hover, #pls li:hover { background: var(--bg2); }
+#tracks li.sel { background: #2c1d14; }
+.warn { color: #ffb84d; }
+.num { min-width: 2.6em; text-align: right; }
+.ok { color: var(--ok); } .bad { color: var(--bad); }
+.cols { display: grid; grid-template-columns: 260px 1fr; gap: 16px; align-items: start; }
+#pls li { cursor: pointer; border-radius: 8px; border: 0; }
+#pls li.on { background: var(--bg3); }
+.empty { color: var(--dim); padding: 24px 6px; text-align: center; }
+#toast { position: fixed; left: 50%; bottom: 20px; transform: translateX(-50%); background: var(--bg3); border: 1px solid var(--line); border-radius: 10px; padding: 10px 16px; display: none; max-width: 90vw; }
+@media (max-width: 640px) { .bar.grp { width: 100%; } .cols { grid-template-columns: 1fr; } .sticky { top: 88px; } }
+</style>
+</head>
+<body>
+<header>
+	<div class="top"><b>HiBy R1</b><span class="info" id="info"></span>
+		<span class="lang"><button data-l="es">ES</button><button data-l="en">EN</button></span></div>
+	<nav><button data-s="up" class="on" data-i="tabUp"></button><button data-s="lib" data-i="tabLib"></button><button data-s="pl" data-i="tabPl"></button></nav>
+	<div class="banner" id="cut"></div>
+	<div class="banner" id="pending"><span data-i="pending"></span><button class="main" id="apply" data-i="apply"></button></div>
+</header>
+<main>
+<section id="up" class="on">
+	<div class="drop" id="drop">
+		<p data-i="dropHint"></p>
+		<button class="main" onclick="pick.click()" data-i="pickFiles"></button>
+		<button onclick="pickdir.click()" data-i="pickDir"></button>
+		<input type="file" id="pick" multiple hidden><input type="file" id="pickdir" webkitdirectory hidden>
+	</div>
+	<div class="bar" style="margin-top:14px"><span data-i="dest"></span>
+		<input type="text" id="dest" class="grow" list="dirs" data-ph="destPh"><datalist id="dirs"></datalist></div>
+	<p class="dim" data-i="upNote"></p>
+	<p class="dim warn" id="btnote" hidden data-i="btNote"></p>
+	<div class="card" id="upcard" hidden>
+		<div class="bar" style="margin:0 0 8px"><b id="ptitle" class="grow"></b><span id="pcount" class="dim"></span></div>
+		<progress id="pa" value="0" max="1"></progress>
+		<p id="pfile" class="dim" style="margin:6px 0 10px"></p>
+		<ul id="log"></ul>
+	</div>
+</section>
+
+<section id="lib">
+	<div class="sticky">
+		<div class="bar"><input type="text" id="q" class="grow" data-ph="searchPh"></div>
+		<div class="bar" style="margin:0">
+			<div class="bar grp"><span id="selinfo" class="dim"></span>
+				<button id="selall" data-i="selAll"></button><button id="selnone" data-i="selNone"></button></div>
+			<div class="bar grp" style="margin-left:auto"><select id="target" class="grow"></select><button id="add" class="main" data-i="add"></button>
+				<button id="del" class="danger" data-i="del"></button></div>
+		</div>
+	</div>
+	<ul id="tracks"></ul>
+	<button id="more" hidden style="margin:12px auto;display:block"></button>
+</section>
+
+<section id="pl">
+	<div class="cols">
+		<div>
+			<button id="plnew" class="main" style="width:100%;margin-bottom:8px" data-i="newList"></button>
+			<ul id="pls"></ul>
+		</div>
+		<div id="editor"></div>
+	</div>
+</section>
+</main>
+<div id="toast"></div>
+<script>
+// Topes: filas por tramo, selección (igual que en el R1), entradas del registro de subida. maxList y pageMax los informa el R1.
+const LIM = {page: 200, listShow: 300, sel: 2000, log: 200};
+const I18N = {
+	es: { tabUp: 'Subir', tabLib: 'Biblioteca', tabPl: 'Listas', pending: 'Hay cambios que el R1 todavía no muestra.', apply: 'Aplicar en el R1',
+		dropHint: 'Arrastra aquí archivos o carpetas de música', pickFiles: 'Elegir archivos', pickDir: 'Elegir carpeta', dest: 'Carpeta de destino:',
+		destPh: 'music/ (raíz)', upNote: 'Lo que ya está en el R1 con el mismo tamaño se omite. Un archivo cortado a medias no queda en la tarjeta.',
+		btNote: 'El R1 tiene auriculares Bluetooth conectados. Wi-Fi y Bluetooth comparten antena: mientras se transfiere, el audio puede cortarse. Mejor pausar la música.',
+		uploading: 'Subiendo', upDone: 'Subida terminada', upSum: (s, k, f) => `${s} enviados · ${k} ya estaban · ${f} con error`, already: 'ya estaba', done: 'listo',
+		noSpace: 'sin espacio', noConn: 'sin conexión', searchPh: 'Buscar por título, artista, álbum o carpeta', selAll: 'Marcar resultados', selNone: 'Quitar marcas',
+		sel: n => n ? `${n} marcadas` : 'Toca una canción para marcarla', add: 'Añadir', del: 'Borrar', addTo: 'Añadir a…', newListOpt: '+ Lista nueva…',
+		more: (n, t) => `Mostrar más (${n} de ${t})`, noTracks: 'Sin resultados', results: t => `${t} resultados`, info: (n, f) => `${n} canciones · ${f} libres`,
+		cut: (m, c) => `El R1 lee hasta ${m} canciones: ${c} quedaron fuera de la biblioteca.`,
+		askName: 'Nombre de la lista nueva:', added: (n, l) => `${n} ${n === 1 ? 'canción añadida' : 'canciones añadidas'} a «${l}»`, markFirst: 'Marca alguna canción primero',
+		pickTarget: 'Elige a qué lista añadir', askDel: n => `¿Borrar ${n} archivos de la tarjeta del R1? No se puede deshacer.`,
+		deleted: n => n === 1 ? '1 archivo borrado' : `${n} archivos borrados`, selCap: m => `Se marcan como máximo ${m} canciones`,
+		listCap: m => `Una lista admite como máximo ${m} canciones`, logMore: n => `… y ${n} más`,
+		newList: '+ Lista nueva', tracks: n => `${n} ${n === 1 ? 'canción' : 'canciones'}`, noLists: 'Todavía no hay listas', pickList: 'Elige una lista o crea una nueva',
+		name: 'Nombre', rename: 'Renombrar', delList: 'Borrar lista', askDelList: l => `¿Borrar la lista «${l}»? Las canciones no se borran.`,
+		listEmpty: 'Lista vacía. Añade canciones desde Biblioteca.', showMore: (n, t) => `Mostrar más (${n} de ${t})`, saved: 'Guardada en el R1', saveErr: 'No se pudo guardar',
+		renamed: 'Lista renombrada', listDeleted: 'Lista borrada', exists: 'Ya existe una lista con ese nombre', up: 'Subir', down: 'Bajar', remove: 'Quitar',
+		applying: 'El R1 está releyendo la tarjeta…', applied: 'Biblioteca actualizada en el R1', noAnswer: 'El R1 no responde: revisa que el Wi-Fi siga activo' },
+	en: { tabUp: 'Upload', tabLib: 'Library', tabPl: 'Playlists', pending: 'There are changes the R1 does not show yet.', apply: 'Apply on the R1',
+		dropHint: 'Drop music files or folders here', pickFiles: 'Choose files', pickDir: 'Choose folder', dest: 'Destination folder:',
+		destPh: 'music/ (root)', upNote: 'Files already on the R1 with the same size are skipped. An interrupted file never stays on the card.',
+		btNote: 'The R1 has Bluetooth headphones connected. Wi-Fi and Bluetooth share the antenna: audio may cut out during transfers. Better pause the music.',
+		uploading: 'Uploading', upDone: 'Upload finished', upSum: (s, k, f) => `${s} sent · ${k} already there · ${f} failed`, already: 'already there', done: 'done',
+		noSpace: 'no space', noConn: 'no connection', searchPh: 'Search by title, artist, album or folder', selAll: 'Mark results', selNone: 'Clear marks',
+		sel: n => n ? `${n} marked` : 'Tap a song to mark it', add: 'Add', del: 'Delete', addTo: 'Add to…', newListOpt: '+ New playlist…',
+		more: (n, t) => `Show more (${n} of ${t})`, noTracks: 'No results', results: t => `${t} results`, info: (n, f) => `${n} songs · ${f} free`,
+		cut: (m, c) => `The R1 reads up to ${m} songs: ${c} were left out of the library.`,
+		askName: 'Name of the new playlist:', added: (n, l) => `${n} ${n === 1 ? 'song' : 'songs'} added to “${l}”`, markFirst: 'Mark some songs first',
+		pickTarget: 'Choose a playlist to add to', askDel: n => `Delete ${n} files from the R1 card? This cannot be undone.`,
+		deleted: n => n === 1 ? '1 file deleted' : `${n} files deleted`, selCap: m => `At most ${m} songs can be marked`,
+		listCap: m => `A playlist holds at most ${m} songs`, logMore: n => `… and ${n} more`,
+		newList: '+ New playlist', tracks: n => `${n} ${n === 1 ? 'song' : 'songs'}`, noLists: 'No playlists yet', pickList: 'Choose a playlist or create one',
+		name: 'Name', rename: 'Rename', delList: 'Delete playlist', askDelList: l => `Delete the playlist “${l}”? Songs are kept.`,
+		listEmpty: 'Empty playlist. Add songs from Library.', showMore: (n, t) => `Show more (${n} of ${t})`, saved: 'Saved on the R1', saveErr: 'Could not save',
+		renamed: 'Playlist renamed', listDeleted: 'Playlist deleted', exists: 'A playlist with that name already exists', up: 'Up', down: 'Down', remove: 'Remove',
+		applying: 'The R1 is reading the card again…', applied: 'Library updated on the R1', noAnswer: 'The R1 does not answer: check that Wi-Fi is still on' },
+};
+let L = localStorage.lang || null, T = I18N.es;
+const $ = id => document.getElementById(id);
+const enc = p => p.split('/').map(encodeURIComponent).join('/');
+const fat = s => s.replace(/[\\/:*?"<>|\x00-\x1f]/g, '_').trim();
+const size = n => n > 1e9 ? (n / 1e9).toFixed(1) + ' GB' : Math.round(n / 1e6) + ' MB';
+const fmt = s => s > 0 ? Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0') : '';
+const el = (tag, cls, txt) => { const e = document.createElement(tag); if (cls) e.className = cls; if (txt != null) e.textContent = txt; return e; };
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+let lib = {count: 0, lists: [], dirs: [], free: 0, maxList: 5000, pageMax: 2000};
+let res = {q: '', total: 0, rows: []};   // resultados de la búsqueda cargados hasta ahora
+const sel = new Map();                     // archivo -> {f, t, a, d}
+let cur = null;                            // lista abierta: {rel, name, items: [{f, t, a, d}], show}
+const item = r => ({f: r[0], t: r[1], a: r[2], d: r[4]});
+
+function toast(t, bad) { const e = $('toast'); e.textContent = t; e.className = bad ? 'bad' : ''; e.style.display = 'block'; clearTimeout(toast.h); toast.h = setTimeout(() => e.style.display = 'none', 3500); }
+function pending(on) { $('pending').classList.toggle('on', on); }
+function setLang(l) {
+	L = l; T = I18N[l]; localStorage.lang = l; document.documentElement.lang = l;
+	document.querySelectorAll('[data-i]').forEach(e => e.textContent = T[e.dataset.i]);
+	document.querySelectorAll('[data-ph]').forEach(e => e.placeholder = T[e.dataset.ph]);
+	document.querySelectorAll('.lang button').forEach(b => b.classList.toggle('on', b.dataset.l === l));
+	drawAll();
+}
+document.querySelectorAll('.lang button').forEach(b => b.onclick = () => setLang(b.dataset.l));
+document.querySelectorAll('nav button').forEach(b => b.onclick = () => {
+	document.querySelectorAll('nav button, section').forEach(x => x.classList.remove('on'));
+	b.classList.add('on'); $(b.dataset.s).classList.add('on');
+	history.replaceState(null, '', '#' + b.dataset.s);
+});
+const tab = document.querySelector(`nav button[data-s="${location.hash.slice(1)}"]`);
+if (tab) tab.click();
+
+async function load() {
+	try { lib = await (await fetch('/api/lib')).json(); } catch (e) { return false; }
+	$('dirs').innerHTML = ''; for (const d of lib.dirs) $('dirs').append(new Option(d));
+	if (!L) L = lib.lang || 'es';
+	return true;
+}
+const tracksUrl = (q, o, n) => `/api/tracks?q=${encodeURIComponent(q)}&o=${o}&n=${n}`;
+async function search(more) {
+	const q = $('q').value.trim(), seq = search.seq = (search.seq || 0) + 1;
+	const r = await fetch(tracksUrl(q, more ? res.rows.length : 0, LIM.page)).then(x => x.json()).catch(() => null);
+	if (!r || seq !== search.seq) return;
+	res = {q, total: r.total, rows: more ? res.rows.concat(r.tracks) : r.tracks};
+	drawTracks();
+}
+function drawAll() {
+	$('btnote').hidden = !lib.bt;
+	$('info').textContent = T.info(lib.count, size(lib.free));
+	$('cut').textContent = lib.cut ? T.cut(lib.max, lib.cut) : ''; $('cut').classList.toggle('on', !!lib.cut);
+	drawTracks(); drawTarget(); drawLists(); drawEditor();
+}
+
+// ---- Subir ----
+async function upload(files) {
+	if (!files.length) return;
+	const dest = $('dest').value.trim().replace(/^\/+|\/+$/g, '');
+	const total = files.reduce((a, f) => a + f.file.size, 0) || 1;
+	let done = 0, sent = 0, skip = 0, fail = 0, logged = 0;
+	$('upcard').hidden = false; $('log').innerHTML = ''; $('ptitle').textContent = T.uploading;
+	const count = () => $('pcount').textContent = `${sent + skip + fail} / ${files.length}`;
+	const extra = el('li', 'empty');
+	for (const {file, path} of files) {
+		const rel = (dest ? dest + '/' : '') + path, url = '/music/' + enc(rel);
+		const li = el('li'), t = el('span', 't'), st = el('span', 'dim');
+		t.append(el('div', '', rel)); li.append(t, st); $('log').prepend(li);
+		if (++logged > LIM.log) { $('log').lastElementChild.remove(); extra.textContent = T.logMore(logged - LIM.log); $('log').append(extra); }
+		count();
+		const h = await fetch(url, {method: 'HEAD'}).catch(() => null);
+		if (h && h.ok && +h.headers.get('Content-Length') === file.size) { st.textContent = T.already; skip++; done += file.size; continue; }
+		const err = await new Promise(res => {
+			const x = new XMLHttpRequest();
+			x.open('PUT', url);
+			x.upload.onprogress = e => { $('pa').value = (done + e.loaded) / total; $('pfile').textContent = `${rel} · ${Math.round(e.loaded * 100 / (file.size || 1))} %`; };
+			x.onload = () => res(x.status === 201 ? '' : x.status === 507 ? T.noSpace : 'HTTP ' + x.status);
+			x.onerror = () => res(T.noConn);
+			x.send(file);
+		});
+		st.textContent = err || T.done; st.className = err ? 'bad' : 'ok';
+		err ? fail++ : sent++;
+		done += file.size; $('pa').value = done / total;
+		if (err === T.noSpace) break;
+	}
+	count();
+	$('ptitle').textContent = T.upDone; $('pfile').textContent = T.upSum(sent, skip, fail);
+	if (sent) pending(true);
+}
+const fromInput = e => { const f = [...e.target.files].map(file => ({file, path: file.webkitRelativePath || file.name})); e.target.value = ''; upload(f); };
+$('pick').onchange = $('pickdir').onchange = fromInput;
+async function walk(entry, base, out) {   // carpetas arrastradas
+	if (entry.isFile) { out.push({file: await new Promise((r, j) => entry.file(r, j)), path: base + entry.name}); return; }
+	const rd = entry.createReader();
+	for (let batch; (batch = await new Promise((r, j) => rd.readEntries(r, j))).length;) for (const e of batch) await walk(e, base + entry.name + '/', out);
+}
+const drop = $('drop');
+drop.ondragover = e => { e.preventDefault(); drop.classList.add('over'); };
+drop.ondragleave = () => drop.classList.remove('over');
+drop.ondrop = async e => {
+	e.preventDefault(); drop.classList.remove('over');
+	const out = [], entries = [...e.dataTransfer.items].map(i => i.webkitGetAsEntry && i.webkitGetAsEntry()).filter(Boolean);
+	if (entries.length) for (const en of entries) await walk(en, '', out);
+	else for (const file of e.dataTransfer.files) out.push({file, path: file.name});
+	upload(out);
+};
+
+// ---- Biblioteca (la búsqueda la hace el R1; se cargan tramos de LIM.page) ----
+function drawTracks() {
+	const ul = $('tracks'); ul.innerHTML = '';
+	for (const r of res.rows) {
+		const f = r[0], li = el('li', sel.has(f) ? 'sel' : ''), cb = el('input'), info = el('span', 't');
+		cb.type = 'checkbox'; cb.checked = sel.has(f);
+		info.append(el('div', '', r[1] || f.split('/').pop()), el('div', 's', [r[2], r[3]].filter(Boolean).join(' · ') || f));
+		info.title = f;
+		li.append(cb, info, el('span', 'dim', fmt(r[4])));
+		li.onclick = () => {
+			if (sel.has(f)) sel.delete(f); else if (sel.size >= LIM.sel) return toast(T.selCap(LIM.sel), 1); else sel.set(f, item(r));
+			cb.checked = sel.has(f); li.className = cb.checked ? 'sel' : ''; drawSel();
+		};
+		ul.append(li);
+	}
+	if (!res.rows.length) ul.append(el('li', 'empty', T.noTracks));
+	$('more').hidden = res.rows.length >= res.total;
+	$('more').textContent = T.more(res.rows.length, res.total);
+	drawSel();
+}
+function drawSel() { $('selinfo').textContent = T.sel(sel.size) + (res.q ? ' · ' + T.results(res.total) : ''); $('add').disabled = $('del').disabled = !sel.size; }
+function drawTarget() {
+	const s = $('target'), v = s.value;
+	s.innerHTML = '';
+	s.append(new Option(T.addTo, ''));
+	lib.lists.forEach(l => s.append(new Option(`${l[1]} (${l[2]})`, l[0])));
+	s.append(new Option(T.newListOpt, '+'));
+	s.value = [...s.options].some(o => o.value === v) ? v : '';
+}
+$('q').oninput = () => { clearTimeout(search.h); search.h = setTimeout(() => search(false), 250); };
+$('more').onclick = () => search(true);
+$('selall').onclick = async () => {   // todos los resultados de la búsqueda, hasta el tope de selección
+	const room = LIM.sel - sel.size;
+	if (room <= 0) return toast(T.selCap(LIM.sel), 1);
+	const r = await fetch(tracksUrl(res.q, 0, Math.min(room + sel.size, lib.pageMax))).then(x => x.json()).catch(() => null);
+	if (!r) return;
+	for (const t of r.tracks) { if (sel.size >= LIM.sel) break; sel.set(t[0], item(t)); }
+	if (r.total > sel.size && sel.size >= LIM.sel) toast(T.selCap(LIM.sel), 1);
+	drawTracks();
+};
+$('selnone').onclick = () => { sel.clear(); drawTracks(); };
+$('add').onclick = async () => {
+	if (!sel.size) return toast(T.markFirst, 1);
+	let rel = $('target').value, l;
+	if (!rel) return toast(T.pickTarget, 1);
+	if (rel === '+') {
+		const name = (prompt(T.askName) || '').trim();
+		if (!name) return;
+		rel = 'Listas/' + fat(name) + '.m3u8';
+		l = lib.lists.find(x => x[0] === rel) || [rel, name, 0];
+	} else l = lib.lists.find(x => x[0] === rel);
+	const items = lib.lists.includes(l) ? await readList(rel) : [];
+	if (items.length + sel.size > lib.maxList) return toast(T.listCap(lib.maxList), 1);
+	const all = items.concat([...sel.values()]);
+	if (!await writeList(rel, l[1], all)) return;
+	if (cur && cur.rel === rel) cur.items = all;
+	toast(T.added(sel.size, l[1]));
+	sel.clear(); drawAll(); $('target').value = rel;
+};
+$('del').onclick = async () => {
+	if (!sel.size || !confirm(T.askDel(sel.size))) return;
+	let n = 0;
+	for (const f of [...sel.keys()]) if ((await fetch('/music/' + enc(f), {method: 'DELETE'})).ok) { n++; sel.delete(f); res.rows = res.rows.filter(r => r[0] !== f); res.total--; lib.count--; }
+	toast(T.deleted(n)); pending(true); drawAll();
+};
+
+// ---- Listas (cada cambio se guarda en el R1; se muestran por tramos de LIM.listShow) ----
+function resolve(dir, p) {   // entrada de .m3u relativa a la carpeta de la lista (./, ../, \) -> ruta dentro de music/
+	p = p.replace(/\\/g, '/');
+	const out = p.startsWith('/') ? [] : dir.split('/').filter(Boolean);
+	for (const s of p.split('/')) { if (s === '..') out.pop(); else if (s && s !== '.') out.push(s); }
+	return out.join('/');
+}
+async function readList(rel) {   // título, artista y duración salen de #EXTINF: no hace falta pedir la biblioteca
+	const r = await fetch('/music/' + enc(rel)).catch(() => null);
+	if (!r || !r.ok) return [];
+	const dir = rel.includes('/') ? rel.slice(0, rel.lastIndexOf('/')) : '', out = [];
+	let ext = null;
+	for (const line of (await r.text()).replace(/^\uFEFF/, '').split(/\r?\n/).map(s => s.trim())) {
+		if (line.startsWith('#EXTINF:')) {
+			const m = line.slice(8), c = m.indexOf(','), rest = c < 0 ? '' : m.slice(c + 1), s = rest.indexOf(' - ');
+			ext = {d: parseInt(m) || -1, a: s < 0 ? '' : rest.slice(0, s), t: s < 0 ? rest : rest.slice(s + 3)};
+		} else if (line && !line.startsWith('#')) { out.push({f: resolve(dir, line), ...(ext || {d: -1, a: '', t: ''})}); ext = null; }
+	}
+	return out;
+}
+async function writeList(rel, name, items) {
+	const up = '../'.repeat(rel.split('/').length - 1);
+	let body = '#EXTM3U\n#PLAYLIST:' + name + '\n';
+	for (const it of items) body += `#EXTINF:${it.d > 0 ? it.d : -1},${it.t ? (it.a ? it.a + ' - ' : '') + it.t : ''}\n${up}${it.f}\n`;
+	const r = await fetch('/music/' + enc(rel), {method: 'PUT', body: new Blob([body], {type: 'text/plain'})}).catch(() => null);
+	if (!r || r.status !== 201) { toast(T.saveErr, 1); return false; }
+	const l = lib.lists.find(x => x[0] === rel);
+	if (l) { l[1] = name; l[2] = items.length; } else lib.lists.push([rel, name, items.length]);
+	pending(true);
+	return true;
+}
+function drawLists() {
+	const ul = $('pls'); ul.innerHTML = '';
+	if (!lib.lists.length) ul.append(el('li', 'empty', T.noLists));
+	for (const l of lib.lists) {
+		const li = el('li', cur && cur.rel === l[0] ? 'on' : ''), t = el('span', 't');
+		t.append(el('div', '', l[1]), el('div', 's', T.tracks(l[2])));
+		li.append(t);
+		li.onclick = async () => { cur = {rel: l[0], name: l[1], items: await readList(l[0]), show: LIM.listShow}; drawLists(); drawEditor(); };
+		ul.append(li);
+	}
+}
+async function saveCur() { if (await writeList(cur.rel, cur.name, cur.items)) { toast(T.saved); drawLists(); drawTarget(); } }
+function drawEditor() {
+	const ed = $('editor'); ed.innerHTML = '';
+	if (!cur) { ed.append(el('p', 'empty', T.pickList)); return; }
+	const bar = el('div', 'bar'), name = el('input'), ren = el('button', '', T.rename), del = el('button', 'danger', T.delList);
+	name.type = 'text'; name.value = cur.name; name.className = 'grow'; name.setAttribute('aria-label', T.name);
+	ren.onclick = async () => {
+		const n = name.value.trim(); if (!n || n === cur.name) return;
+		const rel = 'Listas/' + fat(n) + '.m3u8';
+		if (rel !== cur.rel && lib.lists.some(l => l[0] === rel)) return toast(T.exists, 1);
+		if (!await writeList(rel, n, cur.items)) return;
+		if (rel !== cur.rel) { await fetch('/music/' + enc(cur.rel), {method: 'DELETE'}); lib.lists = lib.lists.filter(l => l[0] !== cur.rel); }
+		cur.rel = rel; cur.name = n; toast(T.renamed); drawLists(); drawTarget();
+	};
+	del.onclick = async () => {
+		if (!confirm(T.askDelList(cur.name))) return;
+		await fetch('/music/' + enc(cur.rel), {method: 'DELETE'});
+		lib.lists = lib.lists.filter(l => l[0] !== cur.rel); cur = null;
+		toast(T.listDeleted); pending(true); drawAll();
+	};
+	bar.append(name, ren, del); ed.append(bar, el('p', 'dim', T.tracks(cur.items.length)));
+	const ul = el('ul'), n = Math.min(cur.items.length, cur.show);
+	for (let i = 0; i < n; i++) {
+		const it = cur.items[i], li = el('li'), info = el('span', 't');
+		info.append(el('div', '', it.t || it.f.split('/').pop()), el('div', 's', it.a || it.f));
+		const b = (txt, title, fn, off) => { const x = el('button', 'icon', txt); x.title = title; x.disabled = off; x.onclick = fn; return x; };
+		const mv = d => { [cur.items[i], cur.items[i + d]] = [cur.items[i + d], cur.items[i]]; drawEditor(); saveCur(); };
+		li.append(el('span', 'dim num', i + 1), info, b('↑', T.up, () => mv(-1), i === 0), b('↓', T.down, () => mv(1), i === cur.items.length - 1),
+			b('✕', T.remove, () => { cur.items.splice(i, 1); drawEditor(); saveCur(); }));
+		ul.append(li);
+	}
+	if (!cur.items.length) ul.append(el('li', 'empty', T.listEmpty));
+	ed.append(ul);
+	if (n < cur.items.length) { const m = el('button', '', T.showMore(n, cur.items.length)); m.style.margin = '12px auto'; m.style.display = 'block'; m.onclick = () => { cur.show += LIM.listShow; drawEditor(); }; ed.append(m); }
+}
+$('plnew').onclick = async () => {
+	const name = (prompt(T.askName) || '').trim(); if (!name) return;
+	const rel = 'Listas/' + fat(name) + '.m3u8';
+	if (lib.lists.some(l => l[0] === rel)) return toast(T.exists, 1);
+	if (!await writeList(rel, name, [])) return;
+	cur = {rel, name, items: [], show: LIM.listShow}; drawAll();
+};
+
+// ---- Aplicar: el R1 vuelve a leer la tarjeta (la aplicación se reinicia) ----
+$('apply').onclick = async () => {
+	await fetch('/api/rescan', {method: 'POST'}).catch(() => {});
+	toast(T.applying);
+	await sleep(4000);
+	for (let i = 0; i < 30; i++) {
+		if (await load()) { pending(false); if (cur) cur.items = await readList(cur.rel); await search(false); drawAll(); return toast(T.applied); }
+		await sleep(2000);
+	}
+	toast(T.noAnswer, 1);
+};
+load().then(() => { setLang(L || 'es'); search(false); });
+</script>
+</body>
+</html>
