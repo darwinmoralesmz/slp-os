@@ -32,6 +32,11 @@ The installer takes about 3 minutes. It first backs up the whole NAND to `~/hiby
 what lets you uninstall), then copies the system to the microSD, prepares slot B on the device and asks before writing
 it. When it finishes, it offers to restart into the new system.
 
+Leave the R1 connected and untouched until the installer finishes: ADB has to stay on the whole time, and on stock
+HiBy it turns off on every restart. In phase 4 the HiBy screen freezes for about a minute and a half (its player is
+stopped to free memory for building slot B) and the R1 restarts at the end. If the connection drops, because of the
+cable or because the R1 restarted, enable ADB again and run the same command: the steps already done are skipped.
+
 ### How much space it takes
 
 | Where | What | Size |

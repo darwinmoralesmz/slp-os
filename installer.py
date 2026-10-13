@@ -8,7 +8,7 @@
 
 Nothing from HiBy is shipped: the Bluetooth/Wi-Fi kit is copied on the device from its own stock rootfs, and the
 slot B image is rebuilt on the device from its own recovery rootfs plus one init script (slotB/overlay)."""
-import argparse, hashlib, os, subprocess, sys, time
+import argparse, hashlib, os, subprocess, sys, threading, time
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 SD = '/usr/data/mnt/sd_0'        # microSD partition 1 (music and the boot.sh launcher)
@@ -36,7 +36,8 @@ def die(msg):
 def adb(*args, check=True):
     p = subprocess.run(['adb', *SERIAL, *args], capture_output=True, text=True, stdin=subprocess.DEVNULL)
     if check and p.returncode:
-        die('adb %s failed: %s' % (args[0], (p.stderr or p.stdout).strip()))
+        die('adb %s failed: %s\nIs the R1 still connected with ADB on? HiBy turns ADB off on every restart: enable it\n'
+            'again and run the same command; finished steps are skipped.' % (args[0], (p.stderr or p.stdout).strip()))
     return p.stdout
 
 
@@ -47,6 +48,21 @@ def sh(cmd, check=True):
     if check and rc.strip() != '0':
         die('on the device: %s\n%s' % (cmd, body.strip()))
     return body.strip()
+
+
+def slow(msg, fn, *args):
+    """Runs a long step printing the elapsed seconds, so it does not look stuck."""
+    done, t0 = threading.Event(), time.time()
+    def tick():
+        while not done.wait(5):
+            print('\r  %s ... %d s' % (msg, time.time() - t0), end='', flush=True)
+    threading.Thread(target=tick, daemon=True).start()
+    print('  %s ...' % msg, end='', flush=True)
+    try:
+        return fn(*args)
+    finally:
+        done.set()
+        print('\r  %s ... %d s' % (msg, time.time() - t0))
 
 
 def push(src, dst):
@@ -87,7 +103,10 @@ def mount_sd():
 
 
 def slotb_is_ours():
-    sh('mkdir -p /tmp/rec; umount /tmp/rec 2>/dev/null; mount -t squashfs -o ro /dev/mtdblock_bbt_ro4 /tmp/rec')
+    """True/False, or None if slot B cannot be mounted (e.g. a write was interrupted)."""
+    if sh('mkdir -p /tmp/rec; umount /tmp/rec 2>/dev/null; mount -t squashfs -o ro /dev/mtdblock_bbt_ro4 /tmp/rec && echo ok',
+          False) != 'ok':
+        return None
     ours = sh('[ -e /tmp/rec/etc/init.d/S92_01_dev ] && echo yes || true') == 'yes'
     sh('umount /tmp/rec')
     return ours
@@ -111,7 +130,7 @@ def backup(serial, slot):
         print('  skipped: the backup is taken from stock HiBy OS (keep the one from the first install)')
         return None
     os.makedirs(d, exist_ok=True)
-    original = not slotb_is_ours()
+    original = slotb_is_ours() is False
     sums = []
     for n in range(7):
         name = 'mtd%d.bin' % n
@@ -183,10 +202,9 @@ def build_slotb():
     push(os.path.join(HERE, 'tools/mksquashfs-mipsel'), INST + '/mksquashfs')
     push(os.path.join(HERE, 'slotB/overlay/etc/init.d/S92_01_dev'), INST + '/S92_01_dev')
     sh('mkdir -p /tmp/rec; umount /tmp/rec 2>/dev/null; mount -t squashfs -o ro /dev/mtdblock_bbt_ro4 /tmp/rec')
-    print('  building the slot B image on the device (about a minute) ...', flush=True)
     try:
         # -e must be the last option: mksquashfs takes every following argument as an exclusion.
-        sh('chmod +x {i}/mksquashfs && {i}/mksquashfs /tmp/rec {i}/slotb.img -comp lzo -b 131072 -all-root -noappend '
+        slow('building the slot B image on the device (about 70 s)', sh, 'chmod +x {i}/mksquashfs && {i}/mksquashfs /tmp/rec {i}/slotb.img -comp lzo -b 131072 -all-root -noappend '
            '-no-progress -quiet -no-xattrs -processors 1 -single-reader -mem 6M '
            "-p 'etc/init.d/S92_01_dev f 755 0 0 cat {i}/S92_01_dev' -e etc/init.d/S92_03_start_recovery".format(i=INST))
     finally:
@@ -209,20 +227,37 @@ def cmd_install(a):
     print('3/4 system files to the microSD')
     copy_system()
     print('4/4 slot B')
-    if slotb_is_ours():
+    ours, stopped = slotb_is_ours(), False
+    if ours is None:
+        die('slot B cannot be read (an interrupted write?). Stock HiBy OS still boots. Run "installer.py uninstall"\n'
+            'to restore it from the backup, then install again.')
+    if ours:
         print('  slot B already has the custom system: not touched')
     elif slot == 'B':
         die('running from slot B but it is not the custom system: unexpected state, stopping.')
     else:
-        img = build_slotb()
-        if not ask('Write the image to slot B (mtd4)? Stock HiBy OS (slot A) is not touched.', a.yes):
-            die('cancelled before writing.')
-        flash_mtd4(img)
+        # mksquashfs needs the RAM the HiBy player uses: stop its launcher first (it reboots when the player exits).
+        print('  stopping the HiBy player to free memory: the screen freezes until the R1 restarts')
+        sh('for p in /proc/[0-9]*; do [ ${p#/proc/} = $$ ] && continue; grep -q "hiby_playe[r].sh" $p/cmdline 2>/dev/null '
+           '&& kill ${p#/proc/}; done; killall hiby_player 2>/dev/null; sleep 1; true')
+        stopped = True
+        try:
+            img = build_slotb()
+            if not ask('Write the image to slot B (mtd4)? Stock HiBy OS (slot A) is not touched.', a.yes):
+                die('cancelled before writing.')
+        except SystemExit:
+            adb('shell', 'reboot', check=False)
+            print('the R1 restarts into stock HiBy OS')
+            raise
+        slow('writing slot B, do not disconnect the R1 (about 15 s)', flash_mtd4, img)
         print('  slot B written and verified')
     sh('rm -rf %s' % INST)
     print('\nInstalled. To start it later: python3 installer.py boot')
     if ask('Restart into the custom system now?', a.yes):
         reboot_r1os()
+    elif stopped:
+        adb('shell', 'reboot', check=False)
+        print('restarting into stock HiBy OS (its player was stopped)')
 
 
 def cmd_boot(a):
@@ -242,14 +277,14 @@ def cmd_uninstall(a):
     want = [l.split()[0] for l in open(os.path.join(d, 'SHA256SUMS')) if l.split()[1] == 'mtd4.bin'][0]
     if sha256(img) != want:
         die('%s does not match its SHA-256.' % img)
-    if not slotb_is_ours():
+    if slotb_is_ours() is False:
         print('slot B is already the original recovery')
     else:
         if not ask('Restore the original slot B (mtd4) from %s?' % img, a.yes):
             die('cancelled.')
         mount_sd()
         push(img, INST + '/mtd4.bin')
-        flash_mtd4(INST + '/mtd4.bin')
+        slow('writing slot B, do not disconnect the R1', flash_mtd4, INST + '/mtd4.bin')
         sh('rm -f %s/mtd4.bin' % INST)
         print('slot B restored and verified')
     sh('/usr/bin/bootmode.sh >/dev/null 2>&1')

@@ -33,7 +33,8 @@ It prints the folder name; `cd` into it. Then:
    ```sh
    python3 installer.py install -y
    ```
-   Relay the progress as it goes (it prints `1/4`…`4/4`). It takes about 3 minutes and ends by restarting the R1
+   Relay the progress as it goes (it prints `1/4`…`4/4`; long steps print the elapsed seconds). Tell the user not to
+   touch or unplug the R1: in phase 4 the HiBy screen freezes for about a minute and a half, that is expected. It takes about 3 minutes and ends by restarting the R1
    into SLP OS.
 
 ## Other commands
@@ -57,6 +58,8 @@ They ask questions too: confirm with the user first and add `-y`. `uninstall` wr
 | `this does not look like a HiBy R1` | Wrong device or wrong firmware. Stop. |
 | `microSD not mounted` | No card, or not FAT32/exFAT. |
 | `device …, running slot B (custom system)` | Already installed: use `update` or `boot`, and `uninstall` needs a restart into stock first. |
+| `adb … failed` / `device … not found` midway | The connection dropped (cable, or the R1 restarted or hung). If the screen is frozen, have the user restart the R1 by hand; then enable ADB again and run the same command: finished steps are skipped. |
+| `slot B cannot be read` | A write to slot B was interrupted. Stock HiBy still boots: run `uninstall` (restores slot B from the backup), then `install`. |
 | `no original slot B backup` | `uninstall` needs the backup made during the **first** install from stock HiBy OS. |
 
 ## Rules
