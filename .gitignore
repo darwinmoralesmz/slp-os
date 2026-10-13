@@ -7,7 +7,7 @@ rootfs_stock/
 rootfs_recovery/
 
 # Compiled outputs and toolchains
-tools/
+tools
 build/
 ui/build/
 ui/r1
@@ -31,3 +31,9 @@ Thumbs.db
 __pycache__/
 *.py[cod]
 logs/
+
+# Dependencias que baja scripts/setup.sh
+lvgl
+third_party/faad2
+third_party/opus
+dist/

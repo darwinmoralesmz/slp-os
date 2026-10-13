@@ -15,6 +15,7 @@ SD = '/usr/data/mnt/sd_0'        # microSD partition 1 (music and the boot.sh la
 R = '/usr/data/mnt/r1os'         # system: partition 2 if present, otherwise SD/r1os (sd/boot.sh decides)
 INST = R + '/inst'
 MTD4_SIZE = 0x1800000
+BACKUP = os.path.join(os.path.expanduser('~'), 'hiby-r1-backup')   # outside the package: survives new versions
 SERIAL = []
 
 # Files taken from the device's own stock rootfs (mtd2): destination under r1os/ <- source path.
@@ -100,12 +101,15 @@ def sha256(path):
     return h.hexdigest()
 
 
-def backup(serial):
-    """Full NAND dump (7 partitions, ~125 MB) to backup/<serial>/, verified by SHA-256 against the device."""
-    d = os.path.join(HERE, 'backup', serial.replace(':', '_'))
+def backup(serial, slot):
+    """Full NAND dump (7 partitions, ~125 MB) to ~/hiby-r1-backup/<serial>/, verified by SHA-256 against the device."""
+    d = os.path.join(BACKUP, serial.replace(':', '_'))
     if os.path.exists(os.path.join(d, 'SHA256SUMS')):
         print('backup already present: %s' % d)
         return d
+    if slot == 'B':
+        print('  skipped: the backup is taken from stock HiBy OS (keep the one from the first install)')
+        return None
     os.makedirs(d, exist_ok=True)
     original = not slotb_is_ours()
     sums = []
@@ -199,7 +203,7 @@ def cmd_install(a):
     serial, slot = connect()
     mount_sd()
     print('1/4 NAND backup')
-    backup(serial)
+    backup(serial, slot)
     print('2/4 Bluetooth/Wi-Fi kit from the device')
     copy_kit()
     print('3/4 system files to the microSD')
@@ -231,7 +235,7 @@ def cmd_uninstall(a):
     serial, slot = connect()
     if slot == 'B':
         die('running from slot B. Use "Restart into HiBy" in the power menu, enable ADB in HiBy OS and run again.')
-    d = a.backup or os.path.join(HERE, 'backup', serial.replace(':', '_'))
+    d = a.backup or os.path.join(BACKUP, serial.replace(':', '_'))
     img = os.path.join(d, 'mtd4.bin')
     if not os.path.exists(img) or 'mtd4_original=yes' not in open(os.path.join(d, 'INFO')).read():
         die('no original slot B backup in %s (it must come from before the first install).' % d)
@@ -262,7 +266,7 @@ def main():
     p.add_argument('command', choices=['install', 'update', 'boot', 'uninstall'])
     p.add_argument('-s', metavar='SERIAL', help='adb serial when several devices are connected')
     p.add_argument('-y', '--yes', action='store_true', help='do not ask for confirmation')
-    p.add_argument('--backup', help='backup folder for uninstall (default backup/<serial>)')
+    p.add_argument('--backup', help='backup folder for uninstall (default ~/hiby-r1-backup/<serial>)')
     a = p.parse_args()
     if a.s:
         SERIAL[:] = ['-s', a.s]

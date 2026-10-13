@@ -49,21 +49,22 @@ The system itself has no name; on the device it is just "the custom system" next
 ## Install
 
 Requirements: HiBy R1 on stock firmware, a FAT32/exFAT microSD, Python 3 and `adb` (Windows, macOS or Linux).
-Building `ui/r1` and `tools/mksquashfs-mipsel` needs Linux: `scripts/setup.sh`, then `make -C ui r1`.
+Download `slp-os-<version>.zip` from [Releases](https://github.com/darwinmoralesmz/slp-os/releases), unzip it and open a
+terminal in that folder.
 
 1. In stock HiBy OS: Settings > About, tap 10 times, then enable ADB in that menu. It does not persist after a restart.
 2. Connect the R1 by USB and run, **from stock HiBy OS the first time**:
    ```sh
    python3 installer.py install
    ```
-   It backs up the whole NAND to `backup/<serial>/` (verified by SHA-256), copies the vendor kit and the system to the
-   microSD, builds the slot B image on the device, asks before writing it, verifies it and offers to restart.
-   Keep `backup/`: it is the only way to uninstall.
+   It backs up the whole NAND to `~/hiby-r1-backup/<serial>/` (verified by SHA-256), copies the vendor kit and the system
+   to the microSD, builds the slot B image on the device, asks before writing it, verifies it and offers to restart.
+   Keep `~/hiby-r1-backup`: it is the only way to uninstall. Takes about 3 minutes.
 
 Other commands (`-s SERIAL` to pick a device, `-y` to skip questions):
 
 ```sh
-python3 installer.py update      # new version: copies the system files again, keeps the backup and slot B
+python3 installer.py update      # new version (from a new zip): copies the system files, keeps the backup and slot B
 python3 installer.py boot        # from stock HiBy OS (ADB on): restart into the custom system
 python3 installer.py uninstall   # from stock HiBy OS: restores the original slot B and boots stock
 ```
@@ -73,7 +74,9 @@ first install; it refuses to run from slot B.
 
 ## Development
 
-`make -C ui sim` builds an SDL simulator for the PC; `scripts/deploy.sh` builds and pushes the app to the microSD.
+Linux only. `scripts/setup.sh` downloads the toolchain and libraries and builds `tools/mksquashfs-mipsel`;
+`make -C ui r1` builds the app, `make -C ui sim` an SDL simulator for the PC, `scripts/deploy.sh` pushes the app to the
+microSD and `scripts/package.sh <version>` builds the release zip.
 Architecture notes are in the source comments; `third_party/VERSIONS.md` lists the bundled libraries.
 
 ## Credits
