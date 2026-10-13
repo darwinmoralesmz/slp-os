@@ -25,17 +25,25 @@ Personal hobby project. The name is a nod to AI slop: the code was written with 
 
 ## Install
 
-You need the R1 on stock firmware with at least 50 % battery, a FAT32 or exFAT microSD with at least 500 MB free
+You need the R1 on stock firmware 1.6 with at least 50 % battery, a FAT32 or exFAT microSD with at least 500 MB free
 besides your music (see [How much space it takes](#how-much-space-it-takes)), and a computer
 (Windows, macOS or Linux) with Python 3 and [`adb`](https://developer.android.com/tools/releases/platform-tools).
 
 1. Download `slp-os-<version>.zip` from [Releases](https://github.com/darwinmoralesmz/slp-os/releases) and unzip it.
-2. On the R1, open Settings > About and tap the version line (**HiBy R1 1.6** in the picture) ten times (1): an ADB switch appears on that same page. Turn
-   it on and go back with the arrow (2). HiBy turns ADB off on every restart, so repeat this whenever you need it.
+2. Connect the R1 to the computer by USB. On the R1, open Settings > About and check that the version is
+   **HiBy R1 1.6** (1). Then tap the **About** title at the top (2) ten times: a "developer mode enabled" message
+   appears, followed by the same screen as when you connect it for file transfer. The computer shows no drive this
+   time, and that is expected: the R1 is in ADB mode, not transfer mode. HiBy turns ADB off on every restart, so
+   repeat this whenever you need it.
 
-   <img src="docs/img/enable-adb.jpg" width="260" alt="Settings &gt; About: tap the version line ten times to reveal the ADB switch">
+   <img src="docs/img/enable-adb.jpg" width="260" alt="Settings &gt; About: check the version (1), then tap the About title ten times (2)">
 
-3. Connect the R1 by USB, open a terminal in the unzipped folder and run:
+3. Open a terminal in the unzipped folder and check the connection; ADB does not always connect on the first try:
+   ```sh
+   adb devices
+   ```
+   It must list one line ending in `device`. If the list is empty, unplug the cable, plug it back in and run it
+   again (repeat step 2 if the R1 restarted). Then run:
    ```sh
    python3 installer.py install
    ```

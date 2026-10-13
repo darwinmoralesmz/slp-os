@@ -8,9 +8,10 @@ Do not ask for these; if any of them is missing, say exactly which one:
 
 1. The R1 runs **stock HiBy OS**, with a microSD card inserted. It needs at least 500 MB free besides the music
    (system ~40 MB, cover cache up to 300 MB, temporary files during the install).
-2. **ADB is enabled**: HiBy OS > Settings > About, tap the version line (e.g. "HiBy R1 1.6") ten times, turn on the
-   ADB switch that appears, then go back. See `docs/img/enable-adb.jpg`. ADB turns itself off on every restart.
-3. The R1 is connected by USB to this computer.
+2. The R1 is connected by USB to this computer.
+3. **ADB is enabled**: HiBy OS > Settings > About, check the version is "HiBy R1 1.6", then tap the "About" title at
+   the top ten times. A "developer mode enabled" message appears, then the USB connection screen; the computer shows
+   no drive (ADB mode, not transfer mode). See `docs/img/enable-adb.jpg`. ADB turns itself off on every restart.
 
 ## Install
 
@@ -24,7 +25,8 @@ python3 -c "import io,json,zipfile,urllib.request as u;a=json.load(u.urlopen('ht
 
 It prints the folder name; `cd` into it. Then:
 
-1. Run `adb devices`: it must list exactly one line ending in `device`.
+1. Run `adb devices`: it must list exactly one line ending in `device`. It does not always connect on the first try:
+   if the list is empty, have the user unplug and replug the cable, and repeat step 3 if the R1 restarted.
 2. **Ask the user to confirm** before going on: the installation writes slot B of the NAND, the only irreversible
    step. Slot A (stock HiBy OS) is never touched, and the installer first backs up all 7 partitions to
    `~/hiby-r1-backup/`.
@@ -52,7 +54,7 @@ They ask questions too: confirm with the user first and add `-y`. `uninstall` wr
 | Message | What to tell the user |
 | --- | --- |
 | `adb not found in PATH` | Install Android platform-tools. |
-| `expected one device in ADB, found 0` | ADB is off (it is after every restart): repeat step 2, or check the USB cable. |
+| `expected one device in ADB, found 0` | ADB is off (it is after every restart): repeat step 3, or unplug and replug the USB cable. |
 | `found 0` + `unauthorized` in `adb devices` | Tap "OK" on the authorization prompt on the R1 screen. |
 | `found 2` | Two devices: pass `-s SERIAL`. |
 | `this does not look like a HiBy R1` | Wrong device or wrong firmware. Stop. |
