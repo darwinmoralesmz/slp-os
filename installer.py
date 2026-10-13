@@ -130,7 +130,10 @@ def backup(serial, slot):
         print('  skipped: the backup is taken from stock HiBy OS (keep the one from the first install)')
         return None
     os.makedirs(d, exist_ok=True)
-    original = slotb_is_ours() is False
+    ours = slotb_is_ours()
+    if ours is None:
+        die('cannot read slot B; install is in an unknown state. Run: python3 installer.py uninstall')
+    original = ours is False
     sums = []
     for n in range(7):
         name = 'mtd%d.bin' % n
