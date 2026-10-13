@@ -15,10 +15,10 @@ besides your music (see [How much space it takes](#how-much-space-it-takes)), an
 (Windows, macOS or Linux) with Python 3 and [`adb`](https://developer.android.com/tools/releases/platform-tools).
 
 1. Download `slp-os-<version>.zip` from [Releases](https://github.com/darwinmoralesmz/slp-os/releases) and unzip it.
-2. On the R1, open Settings > About and tap **HiBy R1 1.6** ten times (1): an ADB switch appears on that same page. Turn
+2. On the R1, open Settings > About and tap the version line (**HiBy R1 1.6** in the picture) ten times (1): an ADB switch appears on that same page. Turn
    it on and go back with the arrow (2). HiBy turns ADB off on every restart, so repeat this whenever you need it.
 
-   <img src="docs/img/enable-adb.jpg" width="260" alt="Settings &gt; About: tap HiBy R1 1.6 ten times to reveal the ADB switch">
+   <img src="docs/img/enable-adb.jpg" width="260" alt="Settings &gt; About: tap the version line ten times to reveal the ADB switch">
 
 3. Connect the R1 by USB, open a terminal in the unzipped folder and run:
    ```sh
