@@ -20,6 +20,8 @@
 #include "meta.h"
 #include "power.h"
 #include "vol_table.h"
+#include "eq.h"
+static int eqp;   // perfil del ecualizador (EQ_P)
 #define STB_IMAGE_IMPLEMENTATION
 #define STBI_ONLY_JPEG
 #define STBI_ONLY_PNG
@@ -649,6 +651,7 @@ static void pre_discard(void) { pre_wait(); if (pre.ok) { dec_close(&pre.d); pre
 // en el jack, misma frecuencia y profundidad), sigue escribiendo en la misma salida sin cerrarla.
 static void *audio_thread(void *arg) {
 	static int32_t buf[PCM_PERIOD * 2];
+	static Eq aeq;
 	setpriority(PRIO_PROCESS, syscall(SYS_gettid), -10);   // la interfaz no debe dejar sin datos a la salida
 	pthread_t pad;
 	pthread_create(&pad, NULL, bt_pad_thread, NULL);   // hereda la prioridad
@@ -719,6 +722,8 @@ static void *audio_thread(void *arg) {
 				next_pick = nx; ended = 1; break;
 			}
 			if (mode && !po_open && bt_out_open(&d)) { failed = 1; break; }
+			if (aeq.preset != eqp || aeq.rate != d.rate) eq_set(&aeq, eqp, d.rate);
+			eq_run(&aeq, buf, n, d.ch);
 			int u = out_write(o, buf, n);
 			if (u < 0) { failed = 1; break; }
 			if (mode) po_used = tick_ms();
@@ -2177,7 +2182,7 @@ static int sort_s, sort_a, sort_r;   // orden de canciones, álbumes y artistas 
 static void save_state(void) {
 	FILE *f = fopen(STATE_FILE, "w");
 	if (!f) return;
-	fprintf(f, "light=%d\nacc=%d\nvol=%d\nshuf=%d\nrep=%d\ncont=%d\nchglim=%d\ndfilt=%d\nbright=%d\nscrto=%d\noffd=%d\noffc=%d\nsorts=%d\nsorta=%d\nsortr=%d\nbton=%d\nwifi=%d\nwlan=%d\nweb=%d\nbtcodec=%s\nldacq=%d\nsniff=%d\nlang=%d\n", light, acc_i, vol, shuf, rep, cont, chglim, dfilt, bright, scr_to_i, off_disc_i, off_conn_i, sort_s, sort_a, sort_r, bt_on, wifi_on, wlan_on, web_on, bt_codec_pref, ldac_q, sniff_m, lang);
+	fprintf(f, "light=%d\nacc=%d\nvol=%d\nshuf=%d\nrep=%d\ncont=%d\nchglim=%d\ndfilt=%d\neq=%d\nbright=%d\nscrto=%d\noffd=%d\noffc=%d\nsorts=%d\nsorta=%d\nsortr=%d\nbton=%d\nwifi=%d\nwlan=%d\nweb=%d\nbtcodec=%s\nldacq=%d\nsniff=%d\nlang=%d\n", light, acc_i, vol, shuf, rep, cont, chglim, dfilt, eqp, bright, scr_to_i, off_disc_i, off_conn_i, sort_s, sort_a, sort_r, bt_on, wifi_on, wlan_on, web_on, bt_codec_pref, ldac_q, sniff_m, lang);
 	for (int i = 0; i < ntracks; i++) if (tracks[i].fav) fprintf(f, "fav=%s\n", tracks[i].file);
 	fclose(f);
 }
@@ -2194,6 +2199,7 @@ static void load_state(void) {
 		else if (!strncmp(l, "cont=", 5)) cont = atoi(l + 5) % 3;
 		else if (!strncmp(l, "chglim=", 7)) chglim = atoi(l + 7) & 3;
 		else if (!strncmp(l, "dfilt=", 6)) dfilt = atoi(l + 6) % 5;
+		else if (!strncmp(l, "eq=", 3)) eqp = atoi(l + 3) % EQ_N;
 		else if (!strncmp(l, "bright=", 7)) set_bright(atoi(l + 7));
 		else if (!strncmp(l, "scrto=", 6)) scr_to_i = atoi(l + 6) % 6;
 		else if (!strncmp(l, "offd=", 5)) off_disc_i = atoi(l + 5) % 6;
@@ -2557,6 +2563,7 @@ static void build_rows(void) {
 	case P_SOUND:
 		row_add("Salida", "Toca para cambiar", out_mode ? (bt_pcm[0] ? "Bluetooth" : "BT sin enlace") : jack_in ? "Jack 3.5" : "Jack vacío", 0, 0); row_ic(ICO_HEADPHONES);
 		row_add("Filtro digital", "Respuesta del DAC", DF_N[dfilt], 1, 0); row_ic(ICO_SLIDERS);
+		row_add("Ecualizador", "Toca para cambiar", EQ_P[eqp].name, 2, 0); row_ic(ICO_SLIDERS);
 		break;
 	case P_DISPLAY:
 		row_add("Modo", "", light ? "Claro" : "Oscuro", 0, 0); row_ic(ICO_SUN);
@@ -2733,7 +2740,7 @@ static void do_select(void) {
 		else if (i >= 100 && i - 100 < nwn) wifi_net_dialog(i - 100);
 		break;
 	case P_SET: if (i == 6) { push(P_WIFI); break; } if (i == 7) { push(P_USB); break; } if (i == 0) push(P_SOUND); else if (i == 1) { push(P_BT); bt_start_job(BJ_LIST, NULL, 0); } else if (i == 2) push(P_DISPLAY); else if (i == 4) push(P_SYSTEM); else if (i == 5) push(P_PLAY); else if (i == 3) push(P_LIB); break;
-	case P_SOUND: if (i == 1) { dfilt = (dfilt + 1) % 5; df_apply(); save_state(); } else if (i == 0) { if (bt_pcm[0] || out_mode) { out_mode = !out_mode; bt_vol_pending = 1; } else flash("Sin Bluetooth conectado"); } break;
+	case P_SOUND: if (i == 2) { eqp = (eqp + 1) % EQ_N; save_state(); } else if (i == 1) { dfilt = (dfilt + 1) % 5; df_apply(); save_state(); } else if (i == 0) { if (bt_pcm[0] || out_mode) { out_mode = !out_mode; bt_vol_pending = 1; } else flash("Sin Bluetooth conectado"); } break;
 	case P_DISPLAY:
 		if (i == 0) { light = !light; theme_apply(); }
 		else if (i == 1) { acc_open(); return; }
@@ -3489,6 +3496,26 @@ static void panel_tile(lv_obj_t *p, int x, int y, const char *ico, const char *t
 	lv_obj_set_size(l, W - 28 - 78, lv_font_get_line_height(F28)); lv_obj_set_pos(l, 60, 20);
 	lv_obj_set_size(s, W - 28 - 36, lv_font_get_line_height(F24)); lv_obj_set_pos(s, 18, 70);
 }
+// Ecualizador: un toque pasa al perfil siguiente; pulsación larga abre Ajustes > Sonido.
+static void panel_eq_event(lv_event_t *e) {
+	if (lv_event_get_code(e) == LV_EVENT_LONG_PRESSED) { panel_close(); nav_root(P_SET); push(P_SOUND); render(); return; }
+	eqp = (eqp + 1) % EQ_N;
+	save_state();
+	lv_label_set_text(lv_event_get_user_data(e), T(EQ_P[eqp].name));
+}
+static void panel_eq(lv_obj_t *p, int y) {
+	lv_obj_t *o = rect(p, 14, y, W - 28, 72, SK.bg);
+	lv_obj_set_style_radius(o, RAD, 0);
+	border(o, 1, SK.line, LV_BORDER_SIDE_FULL);
+	lv_obj_add_flag(o, LV_OBJ_FLAG_CLICKABLE);
+	pressfx(o, SK.line);
+	lv_obj_align(label(o, &ui_icons_30, SK.fg, ICO_SLIDERS), LV_ALIGN_LEFT_MID, 18, 0);
+	lv_obj_align(label(o, F26, SK.fg, T("Ecualizador")), LV_ALIGN_LEFT_MID, 60, 0);
+	lv_obj_t *v = label(o, F26, SK.a1, T(EQ_P[eqp].name));
+	lv_obj_align(v, LV_ALIGN_RIGHT_MID, -18, 0);
+	lv_obj_add_event_cb(o, panel_eq_event, LV_EVENT_CLICKED, v);
+	lv_obj_add_event_cb(o, panel_eq_event, LV_EVENT_LONG_PRESSED, v);
+}
 static lv_obj_t *panel_slider(lv_obj_t *p, int y, const char *ico, int kind) {
 	lv_obj_set_pos(label(p, &ui_icons_30, SK.fg, ico), 18, y + 16);
 	lv_obj_t *h = rect(p, 70, y, 392, 64, SK.bg2);
@@ -3504,7 +3531,7 @@ static lv_obj_t *panel_icon(lv_obj_t *p, const char *ico, int x, lv_event_cb_t c
 	lv_obj_t *l = label(p, &ui_icons_34, SK.dim, ico);
 	lv_obj_add_flag(l, LV_OBJ_FLAG_CLICKABLE | LV_OBJ_FLAG_ADV_HITTEST);
 	lv_obj_set_ext_click_area(l, 22);
-	lv_obj_set_pos(l, x, 410);
+	lv_obj_set_pos(l, x, 494);
 	lv_obj_add_event_cb(l, cb, LV_EVENT_CLICKED, NULL);
 	return l;
 }
@@ -3905,7 +3932,7 @@ static void sel_bar_build(void) {
 
 // Panel en dos niveles que sigue al dedo: el primero muestra la hora, la salida y el brillo; al seguir bajando aparecen el volumen,
 // el Bluetooth y los accesos a ajustes, stand-by y apagado. Al soltar se ajusta al nivel más cercano (o se cierra).
-enum { PN_HD = 56, PN_L1 = 186, PN_F = 478 };
+enum { PN_HD = 56, PN_L1 = 186, PN_F = 562 };
 static int pn_h;
 static void pn_set_h(void *o, int32_t h) { pn_h = h; lv_obj_set_height(pn_card, h); }
 static void pn_closed(lv_anim_t *a) { lv_async_call((lv_async_cb_t)panel_close, NULL); }
@@ -3939,6 +3966,7 @@ static void panel_build(void) {
 		else snprintf(sub, sizeof sub, T("Sin conexión · toca: conectar"));
 		panel_tile(p, 14, 268, ICO_BT, "Bluetooth", sub, bt_pcm[0]);
 	}
+	panel_eq(p, 400);
 	panel_icon(p, ICO_COG, 30, panel_settings_event);
 	panel_icon(p, ICO_MOON, W - 30 - 34 - 110, panel_standby_event);
 	panel_icon(p, ICO_POWER, W - 30 - 34, panel_power_event);

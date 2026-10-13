@@ -69,6 +69,7 @@ test:
 	gcc -I../src ../src/power_test.c -o /tmp/power_test && /tmp/power_test
 	gcc -I../src ../src/vol_test.c -o /tmp/vol_test && /tmp/vol_test
 	gcc -I../src ../src/webd_test.c -o /tmp/webd_test && /tmp/webd_test
+	gcc -I../src ../src/eq_test.c -o /tmp/eq_test -lm && /tmp/eq_test
 
 # Dependencias de cabeceras generadas por -MMD (src/*.h, lv_conf.h, ...).
 -include $(shell find build build_sim -name '*.d' 2>/dev/null)
